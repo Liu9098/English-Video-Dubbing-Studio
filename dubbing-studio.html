@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>English Video Dubbing Studio · 英语视频配音工作台</title>
+<style>
+*{box-sizing:border-box;font-family:system-ui,"Microsoft YaHei",sans-serif}
+:root{
+  --brand:#0F7B73; --brand-soft:#e6f4f2; --danger:#c82423; --blue:#2b78e4;
+  --ink:#1f2933; --gray:#6b7785; --line:#e3e8ee; --bg:#f5f7f9;
+}
+body{margin:0;background:var(--bg);color:var(--ink);padding:0 0 60px}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px}
+header{background:var(--brand);color:#fff;padding:18px 0;margin-bottom:18px}
+header h1{margin:0;font-size:22px;letter-spacing:.5px}
+header p{margin:6px 0 0;font-size:13px;opacity:.85}
+.card{background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(15,123,115,.07)}
+.card h3{margin:0 0 12px;font-size:16px;color:var(--brand);display:flex;align-items:center;gap:8px}
+.card h3 .num{background:var(--brand);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+label{font-size:13px;color:var(--gray);display:block;margin:10px 0 4px}
+input[type=text],textarea,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px}
+textarea{min-height:110px;resize:vertical;line-height:1.5}
+button{padding:9px 14px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:#eef1f4;color:var(--ink);transition:.15s}
+button:hover{filter:brightness(.95)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-sm{padding:5px 10px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+video{width:100%;background:#000;border-radius:10px;max-height:340px}
+.stage{position:relative}
+.prompt{position:absolute;left:0;right:0;bottom:8px;background:rgba(0,0,0,.62);color:#fff;padding:12px 16px;font-size:20px;line-height:1.4;border-radius:0 0 10px 10px;display:none}
+.prompt.on{display:block}
+.count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:64px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6);pointer-events:none}
+.count.on{display:flex}
+.seg{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fbfcfd}
+.seg.active{border-color:var(--brand);background:var(--brand-soft)}
+.seg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.seg-no{background:var(--brand);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px}
+.seg-time{font-size:12px;color:var(--gray);font-variant-numeric:tabular-nums}
+.seg-text{font-size:15px;margin:6px 0 8px;line-height:1.5}
+.dot{width:10px;height:10px;border-radius:50%;background:#cfd6dd;display:inline-block}
+.dot.done{background:#2ea44f}.dot.rec{background:var(--danger)}
+.meter{height:10px;background:#eef1f4;border-radius:6px;overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;width:0;background:var(--brand);transition:width .08s}
+.hint{font-size:12px;color:var(--gray);line-height:1.6;margin:6px 0 0}
+.tag{font-size:12px;background:var(--brand-soft);color:var(--brand);padding:2px 8px;border-radius:20px}
+.warn{background:#fff6e5;border-left:4px solid #f0a020;padding:10px 12px;font-size:13px;border-radius:6px;margin:10px 0}
+.ok{background:#eaf7ee;border-left:4px solid #2ea44f;padding:10px 12px;font-size:13px;border-radius:6px;margin:10px 0;display:none}
+.ok.on{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
+details{background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+summary{cursor:pointer;font-size:15px;color:var(--brand);font-weight:600}
+input[type=range]{width:160px;vertical-align:middle}
+.foot{font-size:12px;color:var(--gray);text-align:center;padding:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>English Video Dubbing Studio</h1>
+    <p>英语视频配音工作台 · 跟着画面录，逐句可重录，一键合成完整配音</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div id="browserWarn" class="warn" style="display:none"></div>
+
+  <!-- 1 视频 -->
+  <div class="card">
+    <h3><span class="num">1</span> 加载视频 Load the video</h3>
+    <div class="row">
+      <input type="file" id="videoFile" accept="video/*" style="flex:1;min-width:200px">
+      <button id="loadUrl" class="btn-sm">用链接加载</button>
+    </div>
+    <div id="urlBox" style="display:none;margin-top:8px">
+      <input type="text" id="videoUrl" placeholder="粘贴 mp4 直链（以 http:// 或 https:// 开头）">
+      <div class="row" style="margin-top:6px"><button id="loadUrlGo" class="btn-sm btn-primary">确定加载</button></div>
+    </div>
+    <div class="stage" style="margin-top:12px">
+      <video id="video" playsinline controls></video>
+      <div class="prompt" id="prompt"></div>
+      <div class="count" id="count"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="tag">原片音量</span>
+      <input type="range" id="vol" min="0" max="100" value="0">
+      <button id="muteBtn" class="btn-sm">静音 Mute：开</button>
+      <span class="tag" id="dur">时长 --:--</span>
+    </div>
+    <p class="hint">配音时请把原片音量调为 0（静音），这样录进去的只有你自己的声音。</p>
+  </div>
+
+  <!-- 2 脚本 -->
+  <div class="card">
+    <h3><span class="num">2</span> 台词脚本 Script &amp; segments</h3>
+    <label>每行一句，建议带时间码。格式：<b>00:03-00:08 | Hello, I'm Anna.</b>（也可写 3-8 | 文本，或只写文本）</label>
+    <textarea id="script" placeholder="00:00-00:05 | Good morning, Mr. Brown.&#10;00:05-00:10 | I'm Anna, your health manager.&#10;00:10-00:15 | Please follow me to the check-up room."></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="parseBtn" class="btn-primary">解析成分段 Parse</button>
+      <button id="clearSeg" class="btn-sm">清空</button>
+      <label style="margin:0;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="contMode" style="width:auto"> 连续录制（录完自动进下一段）
+      </label>
+    </div>
+    <div id="segList" style="margin-top:12px"></div>
+  </div>
+
+  <!-- 3 录制 -->
+  <div class="card">
+    <h3><span class="num">3</span> 录制 Record</h3>
+    <div class="row">
+      <button id="micTest" class="btn-blue">① 测试麦克风</button>
+      <span class="tag" id="micState">未测试</span>
+    </div>
+    <div class="meter"><i id="micBar"></i></div>
+    <div class="row" style="margin-top:12px">
+      <button id="freeRec" class="btn-primary">② 整段跟录（不分句，一键录到底）</button>
+      <button id="stopAll" class="btn-danger" disabled>停止 Stop</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <span class="tag">开录提前量</span>
+      <select id="lead" style="width:auto">
+        <option value="0">0 秒（立刻开录）</option>
+        <option value="1.5" selected>1.5 秒（先看画面再开口）</option>
+        <option value="3">3 秒（较慢，适合初学者）</option>
+      </select>
+    </div>
+    <div id="status" class="ok"></div>
+    <p class="hint">分段录制：点每一句的“录制”按钮，画面会自动跳到该句起点、静音播放、到点自动停。<br>整段跟录：从第 0 秒录到视频结束，适合一次配完。</p>
+  </div>
+
+  <!-- 4 试听导出 -->
+  <div class="card">
+    <h3><span class="num">4</span> 试听与导出 Preview &amp; export</h3>
+    <div class="row">
+      <button id="buildBtn" class="btn-primary">③ 合成完整配音音轨（对齐时间轴）</button>
+      <button id="playMix" class="btn-blue" disabled>④ 原片静音 + 我的配音 同步试听</button>
+    </div>
+    <audio id="mixPlayer" controls style="width:100%;margin-top:10px"></audio>
+    <div class="row" style="margin-top:10px">
+      <button id="dlWav" disabled>下载配音 WAV</button>
+      <button id="dlRaw" disabled>下载原始录音（逐句文件）</button>
+      <button id="dlReport" disabled>下载配音学习单 TXT</button>
+    </div>
+    <div id="exportInfo" class="hint"></div>
+  </div>
+
+  <!-- 教师面板 -->
+  <details>
+    <summary>👩‍🏫 教师面板：预设脚本 + 一键生成学生链接</summary>
+    <div style="margin-top:10px">
+      <label>学生姓名 / 学号（学生自己填，用于文件名）</label>
+      <input type="text" id="stuName" placeholder="如：23护理1班 张明">
+      <label>任务标题</label>
+      <input type="text" id="taskTitle" placeholder="如：Task 3 体检报告转述 配音任务">
+      <label>教师脚本（带时间码，解析后发给学生）</label>
+      <textarea id="tScript" placeholder="00:00-00:05 | Good morning, Mr. Brown."></textarea>
+      <label>可选：视频直链（留空则学生自行上传视频）</label>
+      <input type="text" id="tVideo" placeholder="https://...../video.mp4">
+      <div class="row" style="margin-top:10px">
+        <button id="applyT" class="btn-primary">填入到本页</button>
+        <button id="genLink" class="btn-blue">生成学生链接并复制</button>
+      </div>
+      <div id="linkBox" class="hint" style="word-break:break-all"></div>
+      <p class="hint">说明：把本文件上传到 GitHub Pages 得到 https 地址后，教师在此生成带脚本的链接，发到班级群，学生打开即可直接看到台词，无需自己输入。</p>
+    </div>
+  </details>
+
+  <div class="foot">English Video Dubbing Studio · 单文件离线可用 · 建议部署在 https 环境下使用</div>
+</div>
+
+<script>
+/* ============ 元素 ============ */
+const $ = id => document.getElementById(id);
+const video=$("video"), promptBox=$("prompt"), countBox=$("count"), statusBox=$("status");
+const segList=$("segList"), mixPlayer=$("mixPlayer");
+
+/* ============ 状态 ============ */
+let segments=[];          // {start,end,text}
+let recs=[];              // index -> {blob,url,dur}
+let freeRecBlob=null, freeRecUrl=null;
+let stream=null, recorder=null, chunks=[], session=null;
+let audioCtx=null, analyser=null, micRaf=null;
+let mixBlob=null, mixUrl=null;
+let recMime=null;
+
+/* ============ 兼容性 ============ */
+(function check(){
+  const w=$("browserWarn");
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder==="undefined"){
+    w.style.display="block";
+    w.innerHTML="<b>当前浏览器不支持录音。</b>请用 Chrome / Edge / 最新版手机浏览器打开；若用微信内置浏览器，请点右上角「在浏览器中打开」。";
+    return;
+  }
+  if(location.protocol==="file:"){
+    w.style.display="block";
+    w.innerHTML="<b>当前以本地文件方式打开，部分浏览器会拒绝麦克风权限。</b>建议：① 部署到 GitHub Pages（https）后访问；② 或在电脑上用 VS Code / python 起一个本地服务再访问。";
+  }
+})();
+
+function pickMime(){
+  const list=["audio/webm;codecs=opus","audio/webm","audio/mp4;codecs=mp4a.40.2","audio/mp4","audio/ogg;codecs=opus"];
+  for(const m of list){ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m; }
+  return "";
+}
+
+/* ============ 视频加载 ============ */
+$("videoFile").onchange = e=>{
+  const f=e.target.files[0]; if(!f) return;
+  video.src=URL.createObjectURL(f);
+  video.onloadedmetadata=()=>{ $("dur").textContent="时长 "+fmt(video.duration); };
+  video.volume=0; video.muted=true;
+  ok("视频已加载："+f.name+"（已自动静音）");
+};
+$("loadUrl").onclick=()=>{ const b=$("urlBox"); b.style.display = b.style.display==="none"?"block":"none"; };
+$("loadUrlGo").onclick=()=>{
+  const u=$("videoUrl").value.trim(); if(!u) return;
+  video.src=u; video.crossOrigin="anonymous";
+  video.onloadedmetadata=()=>{ $("dur").textContent="时长 "+fmt(video.duration); };
+  video.volume=0; video.muted=true;
+  ok("视频链接已加载（已自动静音）");
+};
+video.onloadedmetadata=()=>{ $("dur").textContent="时长 "+fmt(video.duration); };
+
+$("vol").oninput=e=>{ const v=e.target.value/100; video.volume=v; video.muted=(v===0); syncMuteBtn(); };
+$("muteBtn").onclick=()=>{ video.muted=!video.muted; if(!video.muted && video.volume===0) video.volume=0.5; $("vol").value=Math.round(video.volume*100); syncMuteBtn(); };
+function syncMuteBtn(){ $("muteBtn").textContent = video.muted ? "静音 Mute：开" : "静音 Mute：关"; }
+syncMuteBtn();
+
+/* ============ 脚本解析 ============ */
+function parseTime(s){
+  s=String(s).trim();
+  let m=s.match(/^(\d+):(\d+(?:\.\d+)?)$/);
+  if(m) return parseInt(m[1])*60+parseFloat(m[2]);
+  m=s.match(/^(\d+(?:\.\d+)?)$/);
+  if(m) return parseFloat(m[1]);
+  return null;
+}
+function parseScript(text){
+  const out=[];
+  text.split(/\r?\n/).forEach(line=>{
+    line=line.trim(); if(!line) return;
+    let start=0,end=null,txt="";
+    let m=line.match(/^(\d{1,2}:\d{2}(?:\.\d+)?|\d+(?:\.\d+)?)\s*[-–—~]\s*(\d{1,2}:\d{2}(?:\.\d+)?|\d+(?:\.\d+)?)\s*[|｜\t,，]\s*(.*)$/);
+    if(m){ start=parseTime(m[1]); end=parseTime(m[2]); txt=m[3].trim(); }
+    else{
+      m=line.match(/^(\d{1,2}:\d{2}(?:\.\d+)?|\d+(?:\.\d+)?)\s*[|｜\t,，]\s*(.*)$/);
+      if(m){ start=parseTime(m[1]); txt=m[2].trim(); }
+      else{ m=line.match(/^\[?(\d{1,2}:\d{2})\]?\s*(.*)$/); if(m){ start=parseTime(m[1]); txt=m[2].trim(); } else txt=line; }
+    }
+    if(start===null) start=0;
+    if(end===null || end<=start) end=start+5;
+    out.push({start,end,text:txt});
+  });
+  return out;
+}
+$("parseBtn").onclick=()=>{
+  const txt=$("script").value.trim();
+  if(!txt){ alert("请先粘贴台词脚本"); return; }
+  segments=parseScript(txt);
+  recs=new Array(segments.length).fill(null);
+  renderSegs();
+  ok("已解析 "+segments.length+" 句。点每句的「录制」开始配音。");
+};
+$("clearSeg").onclick=()=>{ segments=[]; recs=[]; renderSegs(); };
+
+function renderSegs(){
+  if(!segments.length){ segList.innerHTML='<p class="hint">还没有分段。先在上方粘贴脚本并点「解析成分段」。</p>'; return; }
+  segList.innerHTML="";
+  segments.forEach((s,i)=>{
+    const d=document.createElement("div");
+    d.className="seg"; d.id="seg"+i;
+    d.innerHTML=
+      '<div class="seg-head">'+
+        '<span class="seg-no">'+(i+1)+'</span>'+
+        '<span class="seg-time">'+fmt(s.start)+' → '+fmt(s.end)+'（'+(s.end-s.start).toFixed(1)+'s）</span>'+
+        '<span class="dot" id="dot'+i+'"></span>'+
+        '<span style="flex:1"></span>'+
+        '<button class="btn-sm" data-act="play" data-i="'+i+'">▶ 原片</button>'+
+        '<button class="btn-sm btn-primary" data-act="rec" data-i="'+i+'">● 录制</button>'+
+        '<button class="btn-sm" data-act="mine" data-i="'+i+'" id="mine'+i+'" disabled>▶ 我的</button>'+
+        '<button class="btn-sm" data-act="del" data-i="'+i+'" id="del'+i+'" disabled>重录</button>'+
+      '</div>'+
+      '<div class="seg-text">'+(s.text||"（无文本）")+'</div>';
+    segList.appendChild(d);
+  });
+  segList.querySelectorAll("button").forEach(b=>{
+    b.onclick=()=>{
+      const i=+b.dataset.i, act=b.dataset.act;
+      if(act==="play") playOriginal(i);
+      if(act==="rec") recordSeg(i);
+      if(act==="mine") playMine(i);
+      if(act==="del"){ if(confirm("删除第 "+(i+1)+" 句的录音并重新录制？")){ recs[i]=null; updateSegUI(i); } }
+    };
+  });
+}
+function updateSegUI(i){
+  const dot=$("dot"+i); if(!dot) return;
+  dot.className="dot"+(recs[i]?" done":"");
+  const mine=$("mine"+i), del=$("del"+i);
+  if(mine) mine.disabled=!recs[i];
+  if(del) del.disabled=!recs[i];
+}
+function playOriginal(i){
+  const s=segments[i];
+  video.muted=false; video.volume=Math.max(video.volume,0.6);
+  $("vol").value=Math.round(video.volume*100); syncMuteBtn();
+  video.currentTime=s.start; video.play();
+  const t=setInterval(()=>{ if(video.currentTime>=s.end||video.paused||video.ended){ video.pause(); clearInterval(t);} },80);
+}
+function playMine(i){
+  const r=recs[i]; if(!r) return;
+  video.muted=true; video.currentTime=segments[i].start; video.play();
+  const a=new Audio(r.url); a.play();
+  const t=setInterval(()=>{ if(video.currentTime>=segments[i].end||video.paused||video.ended){ video.pause(); a.pause(); clearInterval(t);} },80);
+}
+
+/* ============ 麦克风测试 ============ */
+$("micTest").onclick=async ()=>{
+  try{
+    if(!stream) stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=audioCtx.createMediaStreamSource(stream);
+    analyser=audioCtx.createAnalyser(); analyser.fftSize=1024;
+    src.connect(analyser);
+    const buf=new Uint8Array(analyser.frequencyBinCount);
+    $("micState").textContent="请说话…（绿色跳动说明正常）";
+    if(micRaf) cancelAnimationFrame(micRaf);
+    (function loop(){
+      analyser.getByteTimeDomainData(buf);
+      let peak=0; for(let i=0;i<buf.length;i++){ const v=Math.abs(buf[i]-128)/128; if(v>peak) peak=v; }
+      $("micBar").style.width=Math.min(100,peak*260)+"%";
+      micRaf=requestAnimationFrame(loop);
+    })();
+    setTimeout(()=>{ $("micState").textContent="✓ 麦克风正常"; },2500);
+  }catch(e){
+    $("micState").textContent="✗ 无法访问麦克风："+e.message;
+  }
+};
+
+/* ============ 录制核心 ============ */
+async function ensureStream(){
+  if(stream && stream.getTracks().some(t=>t.readyState==="live")) return stream;
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+  return stream;
+}
+async function recordSeg(i){
+  if(!segments.length) return;
+  if(!video.src){ alert("请先加载视频"); return; }
+  await startSession(segments[i].start, segments[i].end, {mode:"seg",index:i,text:segments[i].text});
+}
+$("freeRec").onclick=async ()=>{
+  if(!video.src){ alert("请先加载视频"); return; }
+  const end=(video.duration&&isFinite(video.duration))?video.duration:60;
+  await startSession(0,end,{mode:"free",index:-1,text:""});
+};
+$("stopAll").onclick=()=>{ if(session) finishSession(); };
+
+async function startSession(start,end,opt){
+  if(session){ ok("正在录制中，请先停止。"); return; }
+  try{ await ensureStream(); }catch(e){ alert("无法访问麦克风："+e.message+"\n请用 https 打开页面并允许麦克风权限。"); return; }
+  const lead=parseFloat($("lead").value)||0;
+  recMime=pickMime();
+  chunks=[];
+  try{
+    recorder = recMime ? new MediaRecorder(stream,{mimeType:recMime}) : new MediaRecorder(stream);
+  }catch(e){ recorder=new MediaRecorder(stream); }
+  recorder.ondataavailable=e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop=()=>{
+    const type=recorder.mimeType||recMime||"audio/webm";
+    const blob=new Blob(chunks,{type});
+    if(opt.mode==="seg"){
+      recs[opt.index]={blob,url:URL.createObjectURL(blob),dur:(opt.end-opt.start)};
+      updateSegUI(opt.index);
+      ok("第 "+(opt.index+1)+" 句录制完成。可点「▶ 我的」试听。");
+    }else{
+      freeRecBlob=blob; freeRecUrl=URL.createObjectURL(blob);
+      mixPlayer.src=freeRecUrl;
+      $("dlRaw").disabled=false; $("dlWav").disabled=false;
+      ok("整段录制完成，可在下方试听 / 下载。");
+    }
+    $("exportInfo").textContent="已录制 "+ (recs.filter(Boolean).length) +" 句分段"+(freeRecBlob?" + 1 段整轨":"");
+    releaseStream();
+  };
+
+  session={start,end,opt,started:false,lead};
+  $("stopAll").disabled=false;
+  video.muted=true; video.volume=0; $("vol").value=0; syncMuteBtn();
+  video.currentTime=Math.max(0,start-lead);
+  video.play().catch(()=>{});
+  promptBox.textContent=opt.text||"";
+  promptBox.classList.toggle("on", !!opt.text);
+  if(opt.mode==="seg")$("mine"+opt.index) && ($("mine"+opt.index).disabled=true);
+  tick();
+}
+
+function tick(){
+  if(!session) return;
+  const t=video.currentTime;
+  if(!session.started){
+    if(t>=session.start-0.02){
+      session.started=true;
+      recorder.start();
+      promptBox.classList.add("on");
+      statusBox.classList.remove("on");
+      $("micState").textContent="● 录制中…";
+    }
+  }else{
+    if(t>=session.end || video.ended){ finishSession(); return; }
+  }
+  requestAnimationFrame(tick);
+}
+
+function finishSession(){
+  if(!session) return;
+  const opt=session.opt, cont=$("contMode").checked, idx=opt.index;
+  video.pause();
+  if(recorder && recorder.state!=="inactive") recorder.stop();
+  promptBox.classList.remove("on");
+  $("stopAll").disabled=true;
+  $("micState").textContent="已停止";
+  const cur=session; session=null;
+  if(cur.opt.mode==="seg" && cont && idx+1<segments.length){
+    setTimeout(()=>recordSeg(idx+1),900);
+  }
+}
+function releaseStream(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  if(micRaf){ cancelAnimationFrame(micRaf); micRaf=null; }
+}
+
+/* ============ 合成对齐音轨 ============ */
+$("buildBtn").onclick=async ()=>{
+  const have=recs.some(Boolean);
+  if(!have && !freeRecBlob){ alert("还没有任何录音。请先录制。"); return; }
+  $("buildBtn").disabled=true; $("buildBtn").textContent="合成中…";
+  try{
+    const sr=44100;
+    const total = (video.duration && isFinite(video.duration)) ? video.duration
+                  : Math.max(...segments.map(s=>s.end), 10);
+    const ctx=new OfflineAudioContext(2, Math.ceil(total*sr)+sr*0.5, sr);
+    if(freeRecBlob){
+      const b=await decode(freeRecBlob,ctx);
+      const src=ctx.createBufferSource(); src.buffer=b; src.connect(ctx.destination); src.start(0);
+    }
+    for(let i=0;i<recs.length;i++){
+      const r=recs[i]; if(!r) continue;
+      const s=segments[i];
+      const b=await decode(r.blob,ctx);
+      const src=ctx.createBufferSource(); src.buffer=b;
+      const g=ctx.createGain(); g.gain.value=1;
+      src.connect(g); g.connect(ctx.destination);
+      src.start(Math.max(0,s.start), 0, Math.min(b.duration, s.end-s.start+0.05));
+    }
+    const rendered=await ctx.startRendering();
+    mixBlob=bufferToWav(rendered);
+    if(mixUrl) URL.revokeObjectURL(mixUrl);
+    mixUrl=URL.createObjectURL(mixBlob);
+    mixPlayer.src=mixUrl;
+    $("playMix").disabled=false; $("dlWav").disabled=false; $("dlReport").disabled=false;
+    ok("合成完成！点「同步试听」看画面+你的配音是否对上。");
+    $("exportInfo").textContent="完整配音音轨已生成，时长 "+fmt(rendered.duration)+"，可直接下载 WAV。";
+  }catch(e){
+    alert("合成失败："+e.message+"\n可改用「下载原始录音」获取逐句文件。");
+  }
+  $("buildBtn").disabled=false; $("buildBtn").textContent="③ 合成完整配音音轨（对齐时间轴）";
+};
+function writeStr(view,off,str){ for(let i=0;i<str.length;i++) view.setUint8(off+i, str.charCodeAt(i)); }
+function bufferToWav(buffer){
+  const numCh=Math.min(2, buffer.numberOfChannels||1);
+  const sr=buffer.sampleRate||44100;
+  const frames=buffer.length;
+  const dataLen=frames*numCh*2;
+  const ab=new ArrayBuffer(44+dataLen);
+  const view=new DataView(ab);
+  writeStr(view,0,"RIFF");  view.setUint32(4, 36+dataLen, true);
+  writeStr(view,8,"WAVE");  writeStr(view,12,"fmt ");
+  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,numCh,true);
+  view.setUint32(24,sr,true); view.setUint32(28,sr*numCh*2,true);
+  view.setUint16(32,numCh*2,true); view.setUint16(34,16,true);
+  writeStr(view,36,"data"); view.setUint32(40,dataLen,true);
+  const chans=[]; for(let c=0;c<numCh;c++) chans.push(buffer.getChannelData(c)||buffer.getChannelData(0));
+  let off=44;
+  for(let i=0;i<frames;i++){
+    for(let c=0;c<numCh;c++){
+      let s=chans[c][i]||0; s=s<-1?-1:(s>1?1:s);
+      view.setInt16(off, s<0? s*0x8000 : s*0x7fff, true); off+=2;
+    }
+  }
+  return new Blob([view],{type:"audio/wav"});
+}
+function decode(blob,ctx){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>ctx.decodeAudioData(fr.result,res,rej);
+    fr.onerror=()=>rej(new Error("读取失败"));
+    fr.readAsArrayBuffer(blob);
+  });
+}
+$("playMix").onclick=()=>{
+  if(!mixUrl) return;
+  video.muted=true; video.currentTime=0;
+  mixPlayer.currentTime=0;
+  video.play(); mixPlayer.play();
+  const t=setInterval(()=>{ if(video.paused||video.ended||mixPlayer.ended){ mixPlayer.pause(); video.pause(); clearInterval(t);} },200);
+};
+
+/* ============ 下载 ============ */
+function nameBase(){
+  const n=($("stuName").value.trim()||"student").replace(/[\\/:*?"<>|]/g,"_");
+  const d=new Date(); const p=x=>String(x).padStart(2,"0");
+  return n+"_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes());
+}
+function dl(url,filename){
+  const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+}
+$("dlWav").onclick=()=>{
+  if(mixUrl) dl(mixUrl,nameBase()+"_dubbing.wav");
+  else if(freeRecUrl) dl(freeRecUrl,nameBase()+"_dubbing.webm");
+};
+$("dlRaw").onclick=()=>{
+  if(freeRecUrl){ dl(freeRecUrl,nameBase()+"_full.webm"); return; }
+  recs.forEach((r,i)=>{ if(r) setTimeout(()=>dl(r.url,nameBase()+"_"+(i+1)+".webm"),i*400); });
+};
+$("dlReport").onclick=()=>{
+  let s="English Video Dubbing Report 配音学习单\n";
+  s+="姓名 Name："+($("stuName").value||"")+"\n";
+  s+="任务 Task："+($("taskTitle").value||"")+"\n";
+  s+="时间 Time："+new Date().toLocaleString()+"\n";
+  s+="----------------------------------------\n";
+  if(segments.length){
+    segments.forEach((g,i)=>{
+      s+=(i+1)+". ["+fmt(g.start)+"-"+fmt(g.end)+"] "+g.text+"\n";
+      s+="   我的录音："+(recs[i]?"已完成":"未完成")+"\n";
+    });
+  }
+  if(freeRecBlob) s+="\n整段跟录：已完成\n";
+  s+="\n自我评价 Self-check：\n□ 发音清晰  □ 语速适中  □ 停顿自然  □ 情绪到位\n";
+  s+="最难的一句 The hardest line：\n";
+  const b=new Blob([s],{type:"text/plain;charset=utf-8"});
+  dl(URL.createObjectURL(b),nameBase()+"_report.txt");
+};
+
+/* ============ 工具 ============ */
+function fmt(t){ if(!isFinite(t)) return "--:--"; const m=Math.floor(t/60), s=Math.floor(t%60); return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"); }
+function ok(msg){ statusBox.textContent=msg; statusBox.classList.add("on"); }
+
+/* ============ 教师面板 ============ */
+$("applyT").onclick=()=>{
+  const t=$("tScript").value.trim();
+  if(t){ $("script").value=t; segments=parseScript(t); recs=new Array(segments.length).fill(null); renderSegs(); }
+  if($("tVideo").value.trim()){ video.src=$("tVideo").value.trim(); video.muted=true; video.volume=0; }
+  ok("教师脚本已填入本页。");
+};
+$("genLink").onclick=()=>{
+  const payload={t:($("taskTitle").value||"Dubbing Task"),s:$("tScript").value||"",v:$("tVideo").value||""};
+  const code=b64enc(JSON.stringify(payload));
+  const url=location.origin+location.pathname+"#d="+code;
+  $("linkBox").textContent=url;
+  navigator.clipboard && navigator.clipboard.writeText(url).then(()=>ok("链接已复制到剪贴板，可直接发到班级群。"))
+    .catch(()=>ok("链接已生成，请手动复制上方地址。"));
+};
+function b64enc(str){
+  const bytes=new TextEncoder().encode(str); let bin="";
+  for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function b64dec(s){
+  s=s.replace(/-/g,"+").replace(/_/g,"/");
+  while(s.length%4) s+="=";
+  const bin=atob(s); const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+(function loadHash(){
+  const m=location.hash.match(/#d=(.+)$/);
+  if(!m) return;
+  try{
+    const p=JSON.parse(b64dec(m[1]));
+    if(p.t) $("taskTitle").value=p.t;
+    if(p.s){ $("script").value=p.s; segments=parseScript(p.s); recs=new Array(segments.length).fill(null); renderSegs(); }
+    if(p.v){ video.src=p.v; video.muted=true; video.volume=0; }
+    document.querySelector("details").open=false;
+    ok("已载入老师布置的配音任务，共 "+segments.length+" 句。");
+  }catch(e){ /* ignore */ }
+})();
+</script>
+</body>
+</html>
